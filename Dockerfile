@@ -1,12 +1,13 @@
 # agent-infra 单容器镜像：Hermes + 自建 ntfy（首启自动初始化认证）
 # 依赖全部自持：
-#   - Hermes ← 你的 GitHub fork（完整源码，可改可推，构建时钉 tag/分支）
-#   - ntfy   ← 你的 ntfy-bin 二进制镜像仓库
+#   - Hermes ← 你的 GitHub fork（main 镜像上游，dev 为构建分支）
+#   - ntfy   ← 你的 GitHub fork（dev 分支 CI 编译，Release 分发二进制）
+# 分支策略详见 README「Fork 分支策略」
 FROM python:3.12-slim
 
 # ===== 自持依赖仓库（按需覆盖）=====
 ARG HERMES_REPO=github.com/kar98knb/hermes-agent
-ARG HERMES_TAG=v0.23.3
+ARG HERMES_BRANCH=dev
 ARG NTFY_REPO=kar98knb/ntfy
 ARG NTFY_VER=2.38.1
 ARG UV_INDEX=https://pypi.org/simple
@@ -18,7 +19,7 @@ RUN apt-get update \
 
 ENV UV_DEFAULT_INDEX=$UV_INDEX
 WORKDIR /opt/hermes
-RUN git clone --depth 1 --branch "$HERMES_TAG" "https://${HERMES_REPO}" .
+RUN git clone --depth 1 --branch "$HERMES_BRANCH" "https://${HERMES_REPO}" .
 RUN uv sync --frozen --no-dev --extra messaging --extra cron
 
 # ntfy 二进制来自 fork 的 Release（由 fork 内 Actions 从源码编译产出）

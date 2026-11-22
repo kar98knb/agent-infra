@@ -10,8 +10,23 @@
 | 仓库 | 内容 |
 |---|---|
 | `agent-infra`（本仓库） | Dockerfile、CI 流水线、入口脚本、文档 |
-| `hermes-agent`（fork 自 NousResearch/hermes-agent） | 完整源码 + 全量 tag，想改就改 |
-| `ntfy`（fork 自 binwiederhier/ntfy） | Go 源码 + `deploy/ntfy-fork-build.yml` 编译发版，想改就改 |
+| `hermes-agent`（fork 自 NousResearch/hermes-agent） | 完整源码，main 跟上游镜像，dev 为构建分支 |
+| `ntfy`（fork 自 binwiederhier/ntfy） | Go 源码，main 跟上游镜像，dev 为构建分支（含编译流水线） |
+
+## Fork 分支策略
+
+两个 fork 采用同一约定：
+
+- **main**：保持与上游仓库镜像一致，随时可 `git fetch upstream && git rebase/merge` 跟进社区
+- **dev**：生产构建分支 = main + 一个「移除无关目录」的提交（tests/website/docs 等），构建快、改动小
+- 改代码：在 dev（或从 dev 拉出的功能分支）上改 → 推 dev → 重新构建镜像
+- 本地验证（与线上构建一致）：
+
+```bash
+git clone -b dev https://github.com/<你>/hermes-agent && cd hermes-agent
+UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple uv sync --frozen --no-dev --extra messaging --extra cron
+./.venv/bin/hermes --version
+```
 
 ## 架构
 
