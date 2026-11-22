@@ -1,0 +1,13 @@
+# 可选：用 compose 管理（等价于 docker run --env-file .env）
+services:
+  agent:
+    image: agent-infra:latest
+    restart: unless-stopped
+    ports:
+      - "2586:2586"
+    env_file: .env
+    volumes:
+      - hermes-home:/root/.hermes
+
+volumes:
+  hermes-home:
