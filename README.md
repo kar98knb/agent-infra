@@ -11,7 +11,7 @@
 |---|---|
 | `agent-infra`（本仓库） | Dockerfile、CI 流水线、入口脚本、文档 |
 | `hermes-agent`（fork 自 NousResearch/hermes-agent） | 完整源码 + 全量 tag，想改就改 |
-| `ntfy-bin` | ntfy 2.38.1 linux-amd64 二进制 + SHA256SUMS |
+| `ntfy`（fork 自 binwiederhier/ntfy） | Go 源码 + `deploy/ntfy-fork-build.yml` 编译发版，想改就改 |
 
 ## 架构
 

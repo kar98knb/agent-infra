@@ -7,7 +7,8 @@ FROM python:3.12-slim
 # ===== 自持依赖仓库（按需覆盖）=====
 ARG HERMES_REPO=github.com/YOURNAME/hermes-agent
 ARG HERMES_TAG=v0.23.3
-ARG NTFY_REPO=YOURNAME/ntfy-bin
+ARG NTFY_REPO=YOURNAME/ntfy
+ARG NTFY_VER=2.38.1
 ARG UV_INDEX=https://pypi.org/simple
 
 RUN apt-get update \
@@ -20,7 +21,9 @@ WORKDIR /opt/hermes
 RUN git clone --depth 1 --branch "$HERMES_TAG" "https://${HERMES_REPO}" .
 RUN uv sync --frozen --no-dev --extra messaging --extra cron
 
-RUN curl -fsSL "https://raw.githubusercontent.com/${NTFY_REPO}/main/ntfy" -o /usr/local/bin/ntfy \
+# ntfy 二进制来自 fork 的 Release（由 fork 内 Actions 从源码编译产出）
+RUN curl -fsSL "https://github.com/${NTFY_REPO}/releases/download/v${NTFY_VER}/ntfy_${NTFY_VER}_linux_amd64.tar.gz" \
+ | tar xz -C /usr/local/bin ntfy \
  && chmod +x /usr/local/bin/ntfy \
  && ntfy --version
 
