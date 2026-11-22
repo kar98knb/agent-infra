@@ -1,5 +1,6 @@
 # 放入 ntfy fork 仓库的 .github/workflows/build.yml
-# 功能：推 tag（v*）→ Go 编译 linux-amd64 二进制 → 按上游命名格式打包 → 挂到 fork 的 Release
+# 功能：推 tag（v*）→ Go 编译 linux-amd64 服务端二进制（无 web UI，等价于上游 make cli-linux-amd64）
+# → 按上游命名格式打包 → 挂到 fork 的 Release
 name: build-binary
 
 on:
@@ -22,6 +23,9 @@ jobs:
 
       - name: Build
         run: |
+          # 上游 make cli-deps-static-sites 的等价物：占位满足 go:embed
+          mkdir -p server/docs server/site
+          touch server/docs/index.html server/site/app.html
           go build -ldflags "-s -w" -o ntfy .
           VER=${GITHUB_REF_NAME#v}
           tar czf "ntfy_${VER}_linux_amd64.tar.gz" ntfy
@@ -31,3 +35,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ntfy_*_linux_amd64.tar.gz
+
+      - name: Artifact (手动触发)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ntfy-binary
+          path: ntfy_*_linux_amd64.tar.gz
