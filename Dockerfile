@@ -5,9 +5,9 @@
 FROM python:3.12-slim
 
 # ===== 自持依赖仓库（按需覆盖）=====
-ARG HERMES_REPO=github.com/YOURNAME/hermes-agent
+ARG HERMES_REPO=github.com/kar98knb/hermes-agent
 ARG HERMES_TAG=v0.23.3
-ARG NTFY_REPO=YOURNAME/ntfy
+ARG NTFY_REPO=kar98knb/ntfy
 ARG NTFY_VER=2.38.1
 ARG UV_INDEX=https://pypi.org/simple
 
