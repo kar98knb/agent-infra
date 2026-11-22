@@ -1,12 +1,13 @@
 # agent-infra 单容器镜像：Hermes + 自建 ntfy（首启自动初始化认证）
-# 构建全程不依赖 Docker Hub 之外的任何私有资产：
-#   - Hermes 从上流公开仓库按 tag 拉取（ARG HERMES_TAG，默认 v0.23.3）
-#   - ntfy 从官方 GitHub Release 下载（ARG NTFY_VER，默认 2.38.1）
-#   - PyPI 索引可用 UV_INDEX 覆盖（国内构建传清华镜像即可）
+# 依赖全部自持：
+#   - Hermes ← 你的 GitHub fork（完整源码，可改可推，构建时钉 tag/分支）
+#   - ntfy   ← 你的 ntfy-bin 二进制镜像仓库
 FROM python:3.12-slim
 
+# ===== 自持依赖仓库（按需覆盖）=====
+ARG HERMES_REPO=github.com/YOURNAME/hermes-agent
 ARG HERMES_TAG=v0.23.3
-ARG NTFY_VER=2.38.1
+ARG NTFY_REPO=YOURNAME/ntfy-bin
 ARG UV_INDEX=https://pypi.org/simple
 
 RUN apt-get update \
@@ -16,11 +17,12 @@ RUN apt-get update \
 
 ENV UV_DEFAULT_INDEX=$UV_INDEX
 WORKDIR /opt/hermes
-RUN git clone --depth 1 --branch "$HERMES_TAG" https://github.com/NousResearch/hermes-agent .
+RUN git clone --depth 1 --branch "$HERMES_TAG" "https://${HERMES_REPO}" .
 RUN uv sync --frozen --no-dev --extra messaging --extra cron
 
-RUN curl -fsSL "https://github.com/binwiederhier/ntfy/releases/download/v${NTFY_VER}/ntfy_${NTFY_VER}_linux_amd64.tar.gz" \
-  | tar xz -C /usr/local/bin ntfy && chmod +x /usr/local/bin/ntfy
+RUN curl -fsSL "https://raw.githubusercontent.com/${NTFY_REPO}/main/ntfy" -o /usr/local/bin/ntfy \
+ && chmod +x /usr/local/bin/ntfy \
+ && ntfy --version
 
 COPY deploy/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

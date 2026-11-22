@@ -2,6 +2,17 @@
 
 个人常驻 AI agent 单容器镜像：**Hermes Agent + 自建 ntfy + 自动认证**。
 
+> 依赖全部自持：Hermes 走你的 GitHub fork（完整源码，改代码推分支即可用），
+> ntfy 走 `ntfy-bin` 二进制镜像仓库——构建不依赖任何上游仓库在线状态。
+
+## 仓库结构
+
+| 仓库 | 内容 |
+|---|---|
+| `agent-infra`（本仓库） | Dockerfile、CI 流水线、入口脚本、文档 |
+| `hermes-agent`（fork 自 NousResearch/hermes-agent） | 完整源码 + 全量 tag，想改就改 |
+| `ntfy-bin` | ntfy 2.38.1 linux-amd64 二进制 + SHA256SUMS |
+
 ## 架构
 
 ```
