@@ -11,7 +11,7 @@ docker compose restart hermes            # 重启单个服务
 
 ## 常见变更
 
-### 换 LLM Key（官方镜像 exec 自动降权，无需 -u）
+### 换 LLM Key（镜像内置降权 shim，无需 -u）
 
 ```bash
 docker compose exec hermes hermes config set DEEPSEEK_API_KEY sk-新key
@@ -48,7 +48,7 @@ docker compose logs -f hermes   # 看处理与回复
 
 ## 数据与备份
 
-- hermes 状态：卷 `hermes-home`（容器内 /opt/data）
+- hermes 状态：卷 `hermes-home`（容器内 /home/hermes/.hermes）
 - ntfy 账号库：卷 `ntfy-auth`（auth.db）
 - 备份：
 

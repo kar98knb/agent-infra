@@ -1,13 +1,19 @@
-# ntfy 自建容器：fork 编译的二进制 + 认证自动初始化（幂等，可重启/重建）
+# ntfy 自建容器：官方静态二进制（sha256 校验）+ 认证自动初始化（幂等，可重启/重建）
+# 说明：ntfy 的 go-sqlite3 依赖 cgo，自编译静态版会破坏消息缓存——
+# 采用官方 release 二进制（官方镜像同为 alpine 基座，已验证兼容），sha256 锁定防篡改。
+# fork（kar98knb/ntfy）保留源码与编译流水线，供未来打补丁时使用。
 FROM alpine:3.20
 
-ARG NTFY_REPO=kar98knb/ntfy
 ARG NTFY_VER=2.38.1
+ARG NTFY_SHA256=9727d45e5da86c3f338f0f329044485bddde76f3fbbbc3f9e695c14776f09c32
 
 RUN apk add --no-cache ca-certificates curl tar \
- && curl -fsSL "https://github.com/${NTFY_REPO}/releases/download/v${NTFY_VER}/ntfy_${NTFY_VER}_linux_amd64.tar.gz" \
- | tar xz -C /usr/local/bin ntfy \
- && chmod +x /usr/local/bin/ntfy
+ && curl -fsSL "https://github.com/binwiederhier/ntfy/releases/download/v${NTFY_VER}/ntfy_${NTFY_VER}_linux_amd64.tar.gz" -o /tmp/ntfy.tar.gz \
+ && echo "${NTFY_SHA256}  /tmp/ntfy.tar.gz" | sha256sum -c - \
+ && tar xzf /tmp/ntfy.tar.gz --strip-components=1 -C /usr/local/bin "ntfy_${NTFY_VER}_linux_amd64/ntfy" \
+ && chmod +x /usr/local/bin/ntfy \
+ && rm /tmp/ntfy.tar.gz \
+ && ntfy --version
 
 COPY deploy/ntfy-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

@@ -14,11 +14,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Clone hermes fork (dev 分支)
-        run: git clone --depth 1 -b dev https://github.com/kar98knb/hermes-agent /tmp/hermes
-
-      - name: Build hermes image（上游 Dockerfile）
-        run: docker build -t agent-hermes:latest /tmp/hermes
+      - name: Build hermes image（自建瘦身 Dockerfile，内部 clone fork dev）
+        run: docker build -t agent-hermes:latest .
 
       - name: Build ntfy image
         run: docker build -t agent-ntfy:latest -f Dockerfile.ntfy .

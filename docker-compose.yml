@@ -1,4 +1,4 @@
-# agent-infra 部署编排：hermes（上游 Dockerfile 构建）+ ntfy（自建认证容器）
+# agent-infra 部署编排：hermes（自建瘦身镜像）+ ntfy（自建认证容器）
 services:
   ntfy:
     image: agent-ntfy:latest
@@ -16,7 +16,6 @@ services:
     image: agent-hermes:latest
     restart: unless-stopped
     init: true
-    command: ["gateway", "run"]
     environment:
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?DEEPSEEK_API_KEY 未设置}
       NTFY_SERVER_URL: http://ntfy:2586
@@ -24,7 +23,7 @@ services:
       NTFY_ALLOWED_USERS: ${NTFY_TOPIC:-agent}
       NTFY_TOKEN: ${NTFY_USER}:${NTFY_PASS}
     volumes:
-      - hermes-home:/opt/data
+      - hermes-home:/home/hermes/.hermes
     depends_on:
       - ntfy
 

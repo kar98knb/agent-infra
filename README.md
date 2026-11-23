@@ -1,9 +1,11 @@
 # agent-infra
 
-个人常驻 AI agent 部署：**Hermes Agent（上游官方镜像体系）+ 自建 ntfy（账号认证）**，双容器编排。
+个人常驻 AI agent 部署：**Hermes Agent（自建瘦身镜像，fork dev @v0.23.3 已验证基线）+ 自建 ntfy（账号认证）**，双容器编排。
 
-> 依赖全部自持：Hermes 走你的 GitHub fork（上游 Dockerfile 构建），
+> 依赖全部自持：Hermes 走你的 GitHub fork（dev 分支，钉 v0.23.3），
 > ntfy 走你的 fork（CI 编译二进制）——构建不依赖任何上游仓库在线状态。
+> 镜像路线：加法路线——467MB 基线 + 非 root 运行 + exec 降权 shim + 卷约定，
+> 不引入上游全家桶（Chromium/前端等）。
 
 ## 仓库结构
 
@@ -50,8 +52,9 @@ docker compose restart hermes
 ```
 
 - 手机 App：服务器 `http://<服务器IP>:2586`，订阅 `NTFY_TOPIC`，登录 `NTFY_USER` + `NTFY_PASS`
-- 数据持久化：hermes 记忆/配置在 `hermes-home` 卷（/opt/data），ntfy 账号在 `ntfy-auth` 卷
+- 数据持久化：hermes 记忆/配置在 `hermes-home` 卷（/home/hermes/.hermes），ntfy 账号在 `ntfy-auth` 卷
 - 重启、重建容器均安全（ntfy 认证初始化幂等，每次启动校验 user/access）
+- `docker compose exec hermes hermes ...` 自动降权（镜像内置 shim）
 - 公网部署建议前置 HTTPS 反代（2586 为明文 Basic auth）
 
 ## 构建 / 发版（GitHub Actions 自动）
