@@ -19,7 +19,7 @@ ntfy 容器（agent-ntfy）
       3. 前台驻留；auth.db 持久化于 ntfy-auth 卷
 
 hermes 容器（agent-hermes，上游镜像）
-  └─ 自建瘦身镜像：非 root 运行、/home/hermes/.hermes 单卷持久化、
+  └─ 上游镜像体系：s6-overlay 监管、HERMES_HOME=/opt/data 单卷持久化、
      docker exec 自动降权、amd64+arm64、内置 Chromium
 ```
 

@@ -28,7 +28,7 @@
 ```
 手机 (ntfy App) ──HTTP :2586──> [ntfy 容器]      ← deny-all + 账号认证（auth.db 持久化于卷）
                                     ↕ 容器内网
-                               [hermes 容器]      ← 上游官方镜像体系（s6 监管、/opt/data 单卷、自动降权）
+                               [hermes 容器]      ← 自建瘦身镜像（非 root + exec 降权 shim + 单卷）
                                     ↕ API
                               DeepSeek（LLM）
 ```

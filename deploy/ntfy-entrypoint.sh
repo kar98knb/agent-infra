@@ -7,15 +7,26 @@ CFG=/etc/ntfy/server.yml
 AUTH_FILE=/var/lib/ntfy/auth.db
 mkdir -p /etc/ntfy /var/lib/ntfy
 
+# HTTPS 可选：/var/lib/ntfy/tls.key + tls.crt 存在则同时监听 8443
+TLS_LINES=""
+if [ -f /var/lib/ntfy/tls.key ] && [ -f /var/lib/ntfy/tls.crt ]; then
+  TLS_LINES='listen-https: ":8443"
+key-file: /var/lib/ntfy/tls.key
+cert-file: /var/lib/ntfy/tls.crt'
+  echo "检测到 TLS 证书，8443 HTTPS 已启用"
+fi
+
 if [ -n "$NTFY_USER" ] && [ -n "$NTFY_PASS" ]; then
   cat > "$CFG" <<YAML
 listen-http: ":2586"
+$TLS_LINES
 auth-file: $AUTH_FILE
 auth-default-access: deny-all
 YAML
 else
   cat > "$CFG" <<YAML
 listen-http: ":2586"
+$TLS_LINES
 YAML
   echo "WARNING: 未设置 NTFY_USER/NTFY_PASS，ntfy 以无认证模式运行（公网不推荐）"
 fi

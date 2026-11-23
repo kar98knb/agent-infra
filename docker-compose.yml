@@ -5,12 +5,15 @@ services:
     restart: unless-stopped
     ports:
       - "2586:2586"
+      - "8443:8443"
     environment:
       NTFY_TOPIC: ${NTFY_TOPIC:-agent}
       NTFY_USER: ${NTFY_USER:?NTFY_USER 未设置}
       NTFY_PASS: ${NTFY_PASS:?NTFY_PASS 未设置}
     volumes:
       - ntfy-auth:/var/lib/ntfy
+      - ./certs/tls.key:/var/lib/ntfy/tls.key:ro
+      - ./certs/tls.crt:/var/lib/ntfy/tls.crt:ro
 
   hermes:
     image: agent-hermes:latest
