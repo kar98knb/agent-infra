@@ -14,21 +14,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build image
-        run: docker build -t agent-infra:latest .
+      - name: Clone hermes fork (dev 分支)
+        run: git clone --depth 1 -b dev https://github.com/kar98knb/hermes-agent /tmp/hermes
 
-      - name: Export tar
-        run: docker save agent-infra:latest -o agent-infra-latest.tar
+      - name: Build hermes image（上游 Dockerfile）
+        run: docker build -t agent-hermes:latest /tmp/hermes
+
+      - name: Build ntfy image
+        run: docker build -t agent-ntfy:latest -f Dockerfile.ntfy .
+
+      - name: Export tars
+        run: |
+          docker save agent-hermes:latest -o agent-hermes-latest.tar
+          docker save agent-ntfy:latest -o agent-ntfy-latest.tar
 
       - name: Upload to Release (tag 触发)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: agent-infra-latest.tar
+          files: |
+            agent-hermes-latest.tar
+            agent-ntfy-latest.tar
 
       - name: Upload artifact (手动触发)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          name: agent-infra-tar
-          path: agent-infra-latest.tar
+          name: agent-tars
+          path: |
+            agent-hermes-latest.tar
+            agent-ntfy-latest.tar

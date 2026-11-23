@@ -1,0 +1,17 @@
+# ntfy 自建容器：fork 编译的二进制 + 认证自动初始化（幂等，可重启/重建）
+FROM alpine:3.20
+
+ARG NTFY_REPO=kar98knb/ntfy
+ARG NTFY_VER=2.38.1
+
+RUN apk add --no-cache ca-certificates curl tar \
+ && curl -fsSL "https://github.com/${NTFY_REPO}/releases/download/v${NTFY_VER}/ntfy_${NTFY_VER}_linux_amd64.tar.gz" \
+ | tar xz -C /usr/local/bin ntfy \
+ && chmod +x /usr/local/bin/ntfy
+
+COPY deploy/ntfy-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+VOLUME /var/lib/ntfy
+EXPOSE 2586
+ENTRYPOINT ["/entrypoint.sh"]

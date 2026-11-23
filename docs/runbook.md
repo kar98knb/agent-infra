@@ -1,63 +1,74 @@
-# 运维手册（容器版）
+# 运维手册（双容器版）
 
 ## 日常操作
 
 ```bash
-# 查看日志（含首启认证信息）
-docker logs -f agent
-
-# 重启
-docker restart agent
-
-# 状态
-docker ps | grep agent
+docker compose ps                        # 状态
+docker compose logs -f hermes            # 网关日志
+docker compose logs -f ntfy              # ntfy 日志（含每次启动的认证摘要）
+docker compose restart hermes            # 重启单个服务
 ```
 
 ## 常见变更
 
-### 换 topic / 账号密码
+### 换 LLM Key（官方镜像 exec 自动降权，无需 -u）
 
 ```bash
-docker rm -f agent
-docker run -d --name agent -p 2586:2586 --restart unless-stopped \
-  -e DEEPSEEK_API_KEY=sk-xxx \
-  -e NTFY_TOPIC=新topic \
-  -e NTFY_USER=kar98k -e NTFY_PASS=新密码 \
-  -v agent-home:/root/.hermes \
-  agent-infra:latest
+docker compose exec hermes hermes config set DEEPSEEK_API_KEY sk-新key
+docker compose restart hermes
 ```
 
-认证初始化只发生在首次启动（auth.db 在容器层）；已初始化后改密码需进容器执行：
+### 换 topic
 
 ```bash
-docker exec -it agent ntfy --auth-file /var/lib/ntfy/auth.db user change-pass kar98k
+# 1. .env 里改 NTFY_TOPIC
+# 2. ntfy 侧授权新 topic（容器每次启动也会幂等授权）
+docker compose exec ntfy ntfy access "$(printenv NTFY_USER)" 新topic read-write
+# 3. hermes 侧生效
+docker compose restart hermes
 ```
 
-### 换 LLM Key
+### 换密码
 
 ```bash
-docker exec agent /opt/hermes/.venv/bin/hermes config set DEEPSEEK_API_KEY sk-xxx
-docker restart agent
+# 1. .env 里改 NTFY_PASS
+# 2. 更新 ntfy 用户密码（auth.db 在 ntfy-auth 卷）
+docker compose exec -e NTFY_PASSWORD=新密码 ntfy ntfy user change-pass "$(printenv NTFY_USER)"
+# 3. 两侧重启
+docker compose restart
+# 手机 App 同步换登录密码
 ```
 
 ### 验证链路
 
 ```bash
-# 手机发消息后看网关日志
-docker logs -f agent | grep -iv "nous\|auxiliary"
-
-# 服务端直接测发布（Basic auth）
-curl -u kar98k:密码 -d "test" http://127.0.0.1:2586/agent
+curl -u 用户名:密码 -d "test" http://127.0.0.1:2586/你的topic
+docker compose logs -f hermes   # 看处理与回复
 ```
 
 ## 数据与备份
 
-- Hermes 状态：卷 `agent-home`（/root/.hermes）
-- 备份：`docker run --rm -v agent-home:/data -v $(pwd):/backup alpine tar czf /backup/agent-home.tgz -C /data .`
+- hermes 状态：卷 `hermes-home`（容器内 /opt/data）
+- ntfy 账号库：卷 `ntfy-auth`（auth.db）
+- 备份：
+
+```bash
+docker run --rm -v agent-infra_hermes-home:/data -v $(pwd):/backup alpine tar czf /backup/hermes-home.tgz -C /data .
+docker run --rm -v agent-infra_ntfy-auth:/data -v $(pwd):/backup alpine tar czf /backup/ntfy-auth.tgz -C /data .
+```
 
 ## 升级
 
 ```bash
-docker load < agent-infra-latest.tar   # 新版本 tar
-docker rm -f agent && docker run ...   # 用新镜像重建（卷复用，记忆保留）
+docker load < agent-hermes-latest.tar   # 新版本两个 tar
+docker load < agent-ntfy-latest.tar
+docker compose down && docker compose up -d   # 卷复用，记忆保留
 ```
+
+## 发布前自检清单（教训沉淀）
+
+- [ ] 首启路径：全新卷启动 → 发消息 → 收到回复
+- [ ] 重启路径：`docker compose restart` → 发消息 → 收到回复
+- [ ] 重建路径：`down && up -d` → 记忆仍在、发消息正常
+- [ ] 换 Key：runbook 流程实测生效
+- [ ] 文档一致性：grep 所有引用旧路径/旧变量/旧版本号的文件

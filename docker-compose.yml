@@ -1,13 +1,33 @@
-# 可选：用 compose 管理（等价于 docker run --env-file .env）
+# agent-infra 部署编排：hermes（上游 Dockerfile 构建）+ ntfy（自建认证容器）
 services:
-  agent:
-    image: agent-infra:latest
+  ntfy:
+    image: agent-ntfy:latest
     restart: unless-stopped
     ports:
       - "2586:2586"
-    env_file: .env
+    environment:
+      NTFY_TOPIC: ${NTFY_TOPIC:-agent}
+      NTFY_USER: ${NTFY_USER:?NTFY_USER 未设置}
+      NTFY_PASS: ${NTFY_PASS:?NTFY_PASS 未设置}
     volumes:
-      - hermes-home:/root/.hermes
+      - ntfy-auth:/var/lib/ntfy
+
+  hermes:
+    image: agent-hermes:latest
+    restart: unless-stopped
+    init: true
+    command: ["gateway", "run"]
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:?DEEPSEEK_API_KEY 未设置}
+      NTFY_SERVER_URL: http://ntfy:2586
+      NTFY_TOPIC: ${NTFY_TOPIC:-agent}
+      NTFY_ALLOWED_USERS: ${NTFY_TOPIC:-agent}
+      NTFY_TOKEN: ${NTFY_USER}:${NTFY_PASS}
+    volumes:
+      - hermes-home:/opt/data
+    depends_on:
+      - ntfy
 
 volumes:
+  ntfy-auth:
   hermes-home:

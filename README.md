@@ -1,15 +1,15 @@
 # agent-infra
 
-个人常驻 AI agent 单容器镜像：**Hermes Agent + 自建 ntfy + 自动认证**。
+个人常驻 AI agent 部署：**Hermes Agent（上游官方镜像体系）+ 自建 ntfy（账号认证）**，双容器编排。
 
-> 依赖全部自持：Hermes 走你的 GitHub fork（完整源码，改代码推分支即可用），
-> ntfy 走 `ntfy-bin` 二进制镜像仓库——构建不依赖任何上游仓库在线状态。
+> 依赖全部自持：Hermes 走你的 GitHub fork（上游 Dockerfile 构建），
+> ntfy 走你的 fork（CI 编译二进制）——构建不依赖任何上游仓库在线状态。
 
 ## 仓库结构
 
 | 仓库 | 内容 |
 |---|---|
-| `agent-infra`（本仓库） | Dockerfile、CI 流水线、入口脚本、文档 |
+| `agent-infra`（本仓库） | CI 流水线、compose、ntfy 认证容器、文档 |
 | `hermes-agent`（fork 自 NousResearch/hermes-agent） | 完整源码，main 跟上游镜像，dev 为构建分支 |
 | `ntfy`（fork 自 binwiederhier/ntfy） | Go 源码，main 跟上游镜像，dev 为构建分支（含编译流水线） |
 
@@ -17,59 +17,51 @@
 
 两个 fork 采用同一约定：
 
-- **main**：保持与上游仓库镜像一致，随时可 `git fetch upstream && git rebase/merge` 跟进社区
+- **main**：保持与上游仓库镜像一致，随时 `git fetch upstream && git rebase/merge` 跟进社区
 - **dev**：生产构建分支 = main + 一个「移除无关目录」的提交（tests/website/docs 等），构建快、改动小
 - 改代码：在 dev（或从 dev 拉出的功能分支）上改 → 推 dev → 重新构建镜像
-- 本地验证（与线上构建一致）：
-
-```bash
-git clone -b dev https://github.com/<你>/hermes-agent && cd hermes-agent
-UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple uv sync --frozen --no-dev --extra messaging --extra cron
-./.venv/bin/hermes --version
-```
 
 ## 架构
 
 ```
-手机 (ntfy App) ──HTTP──> [容器]
-                           ├─ ntfy（自建 :2586，deny-all + 账号认证）
-                           └─ Hermes Gateway（订阅/发布 ntfy，24/7）
-                                ↕ API
-                          DeepSeek（LLM）
+手机 (ntfy App) ──HTTP :2586──> [ntfy 容器]      ← deny-all + 账号认证（auth.db 持久化于卷）
+                                    ↕ 容器内网
+                               [hermes 容器]      ← 上游官方镜像体系（s6 监管、/opt/data 单卷、自动降权）
+                                    ↕ API
+                              DeepSeek（LLM）
 ```
 
-## 部署（docker load + docker run 两步）
+## 部署（docker load ×2 + compose up）
 
 ```bash
-# 1. 加载镜像（tar 从 GitHub Release 下载，经宿主机中转或直连）
-docker load < agent-infra-latest.tar
+# 1. 从 GitHub Release 下载两个 tar 并加载（经宿主机中转或直连）
+docker load < agent-hermes-latest.tar
+docker load < agent-ntfy-latest.tar
 
-# 2. 运行
-docker run -d --name agent \
-  -p 2586:2586 \
-  --restart unless-stopped \
-  -e DEEPSEEK_API_KEY=sk-xxx \
-  -e NTFY_TOPIC=agent \
-  -e NTFY_USER=kar98k -e NTFY_PASS=你的密码 \
-  -v agent-home:/root/.hermes \
-  agent-infra:latest
+# 2. 配置
+cp .env.example .env   # 填 DEEPSEEK_API_KEY / NTFY_TOPIC / NTFY_USER / NTFY_PASS
+
+# 3. 起服务
+docker compose up -d
+
+# 4. 启用 ntfy 平台（一次性；官方镜像的 exec 自动降权到 hermes 用户）
+docker compose exec hermes hermes config set platforms.ntfy.enabled true
+docker compose restart hermes
 ```
 
-- 首次启动自动初始化 ntfy 认证（deny-all 策略），Hermes token 自动生成并注入，日志中打印
-- 手机 App：服务器 `http://<服务器IP>:2586`，订阅 `agent`，登录 `kar98k` + 密码
-- 不设 NTFY_USER/NTFY_PASS 则以无认证模式运行（仅限内网）
+- 手机 App：服务器 `http://<服务器IP>:2586`，订阅 `NTFY_TOPIC`，登录 `NTFY_USER` + `NTFY_PASS`
+- 数据持久化：hermes 记忆/配置在 `hermes-home` 卷（/opt/data），ntfy 账号在 `ntfy-auth` 卷
+- 重启、重建容器均安全（ntfy 认证初始化幂等，每次启动校验 user/access）
+- 公网部署建议前置 HTTPS 反代（2586 为明文 Basic auth）
 
 ## 构建 / 发版（GitHub Actions 自动）
 
-推 tag（`v*`）或在 Actions 页手动触发 → 自动构建并产出 `agent-infra-latest.tar` 挂到 Release / Artifact。
+推 tag（`v*`）或在 Actions 页手动触发 → 自动构建并产出两个 tar 挂到 Release：
 
-本地构建：
-
-```bash
-docker build \
-  --build-arg UV_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple \
-  -t agent-infra:latest .
-```
+| 产物 | 内容 |
+|---|---|
+| `agent-hermes-latest.tar` | 上游 Dockerfile + fork dev 构建的 Hermes 镜像 |
+| `agent-ntfy-latest.tar` | alpine + fork 编译二进制 + 认证自动初始化 |
 
 ## 配置参考
 
@@ -77,11 +69,10 @@ docker build \
 |---|---|---|
 | `DEEPSEEK_API_KEY` | ✅ | LLM Key |
 | `NTFY_TOPIC` | ✅ | 频道名（认证保护，可随意取） |
-| `NTFY_USER` / `NTFY_PASS` | 推荐 | 手机登录账号；不设 = 无认证 |
-| `NTFY_TOKEN` | 自动 | 首启自动生成并注入 Hermes |
+| `NTFY_USER` / `NTFY_PASS` | ✅（公网） | 手机登录账号；Hermes 侧自动用同账号 Basic auth |
 
 ## 安全底线
 
 - `.env`/密钥永不入库
 - 公网部署务必设置 NTFY_USER/NTFY_PASS
-- 镜像内 ntfy 端口 2586 为非标端口，如需 HTTPS 可在前面挂反代
+- 如需 HTTPS 在 2586 前挂反代（Caddy 等）
