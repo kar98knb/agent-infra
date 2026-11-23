@@ -11,7 +11,7 @@ docker compose restart hermes            # 重启单个服务
 
 ## 常见变更
 
-### 换 LLM Key（镜像内置降权 shim，无需 -u）
+### 换 LLM Key（官方镜像 exec 自动降权，无需 -u）
 
 ```bash
 docker compose exec hermes hermes config set DEEPSEEK_API_KEY sk-新key
@@ -48,7 +48,7 @@ docker compose logs -f hermes   # 看处理与回复
 
 ## 数据与备份
 
-- hermes 状态：卷 `hermes-home`（容器内 /home/hermes/.hermes）
+- hermes 状态：卷 `hermes-home`（容器内 /opt/data）
 - ntfy 账号库：卷 `ntfy-auth`（auth.db）
 - 备份：
 
@@ -72,3 +72,26 @@ docker compose down && docker compose up -d   # 卷复用，记忆保留
 - [ ] 重建路径：`down && up -d` → 记忆仍在、发消息正常
 - [ ] 换 Key：runbook 流程实测生效
 - [ ] 文档一致性：grep 所有引用旧路径/旧变量/旧版本号的文件
+
+## 自签 HTTPS（免域名免备案，已实测验证）
+
+公网部署不想买域名时，用自签证书 + ntfy 原生 HTTPS（已验证：ntfy Android App 信任手机系统用户证书，HyperOS 实测通过）。
+
+**服务器侧（30 秒）：**
+
+```bash
+openssl req -x509 -newkey rsa:2048 -nodes -keyout tls.key -out tls.crt -days 3650 \
+  -subj "/CN=<服务器IP>" -addext "subjectAltName=IP:<服务器IP>,IP:127.0.0.1"
+# ntfy 配置（server.yml）：
+#   listen-https: ":8443"
+#   key-file: .../tls.key
+#   cert-file: .../tls.crt
+```
+
+**手机侧（一次）：** 证书传到手机 → 直接点击 .crt 文件 → 安装证书（HyperOS：设置 → 密码与安全 → 系统安全 → 加密与凭据 → 安装证书 → CA 证书）→ ntfy App 服务器填 `https://<IP>:8443`。
+
+**注意：**
+- 证书 SAN 必须包含手机实际连接的 IP；换服务器 IP = 重新签 + 手机重装证书
+- 安装后系统可能提示「网络可能被监控」——正常现象
+- 域名 + Let's Encrypt 路线仍是更省心的替代（约 30 元/年）
+
