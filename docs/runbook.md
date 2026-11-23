@@ -73,6 +73,16 @@ docker compose down && docker compose up -d   # 卷复用，记忆保留
 - [ ] 换 Key：runbook 流程实测生效
 - [ ] 文档一致性：grep 所有引用旧路径/旧变量/旧版本号的文件
 
+## 生产环境记录（ECS，2026-11-23 上线）
+
+- 部署方式：Release tar ×2 + compose（README 流程），公网仅暴露 8443 HTTPS（安全组入方向 TCP 8443，2586 不公开）
+- 验收：首启/重启/重建/公网 HTTPS/认证 全通过；手机自签证书信任流程见下节
+- 已知观察项：
+  1. hermes 的 ntfy 订阅流偶发断连（重启 hermes 恢复）——复发频繁再加看门狗
+  2. ECS 为试用实例（约 71 天）——到期前备份 `hermes-home`/`ntfy-auth` 卷并决定续费/迁移
+  3. Windows 终端 curl 发中文会以 GBK 编码被 ntfy 判为附件（400）——测试请用 `ssh <server> curl` 或手机 App
+- 回滚：VM 侧旧主栈（systemd hermes-gateway）已 stop+disable，配置保留，需要时 `systemctl --user enable --now hermes-gateway` 恢复
+
 ## 自签 HTTPS（免域名免备案，已实测验证）
 
 公网部署不想买域名时，用自签证书 + ntfy 原生 HTTPS（已验证：ntfy Android App 信任手机系统用户证书，HyperOS 实测通过）。
